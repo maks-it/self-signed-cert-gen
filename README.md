@@ -1,90 +1,177 @@
-# Self signed certificates for your Home Lab environment
+# Self-Signed Certificates & PSK Generator for Home Lab
 
-Today use of Browser SSL certificates becomes a must even for nas, routers and other home lab environment purposes.
-With these two scripts you can generate your own self signed root certificate and child certificates for your devices.
+Generate self-signed root certificates, device certificates, and Pre-Shared Keys (PSK) for your home lab environment. Supports both **Linux (Bash)** and **Windows (PowerShell)**.
 
-## How to use them?
-  
-From terminal browse to its directory and run first:
+## Features
+
+| Feature | Linux (Bash) | Windows (PowerShell) |
+|---------|--------------|----------------------|
+| Root CA generation | `create_self_signed_root_cert.sh` | `New-SelfSignedRootCert.ps1` |
+| Device certificates | `create_self_signed_cert.sh` | `New-SelfSignedCert.ps1` |
+| PSK generation | `create_psk.sh` | `New-PskCert.ps1` |
+| Install Root CA | Manual | `Install-RootCA.ps1` |
+
+---
+
+## Quick Start
+
+### Linux (Bash)
 
 ```bash
+cd src/bash
+
+# 1. Generate Root CA
 ./create_self_signed_root_cert.sh
+
+# 2. Generate device certificate
+./create_self_signed_cert.sh
+
+# 3. Generate PSK (for TLS-PSK)
+./create_psk.sh
 ```
 
-script will ask you to provide:
+### Windows (PowerShell)
 
-* CommonName (example Maks-IT)'
-* Organization (example Maks-IT)'
-* OrganizationalUnit (example Maks-IT Root CA)
+```powershell
+cd src\Powershell
 
-at this point your root certificate will be placed in `rootCert` folder and there you find following files:
+# 1. Generate Root CA
+.\New-SelfSignedRootCert.ps1
 
-* ca.crt
-* ca.key
-* ca.pem
+# 2. Generate device certificate
+.\New-SelfSignedCert.ps1
 
-> Keep always them in place to generate child certificates with the next script.
+# 3. Generate PSK (for TLS-PSK)
+.\New-PskCert.ps1
 
-## Install root certificate in Windows
+# 4. Install Root CA to Windows trust store (run as Administrator)
+.\Install-RootCA.bat
+```
 
-1. Click on `ca.crt` file
+> **Note:** On Windows, the scripts include bundled OpenSSL. Run `Install-OpenSSL.bat` if needed.
 
-2. On general tab click Install Certificate...
+---
 
-![general_tab](/resources/2023-09-10_114033.png)
+## Root CA Generation
 
-3. Select Store Location -> Local Machine
+Generate a self-signed Root Certificate Authority:
 
-![select_store](/resources/2023-09-10_114102.png)
+**Prompts:**
+- CommonName (e.g., `Maks-IT Root CA`)
+- Organization (e.g., `Maks-IT LLC`)
+- OrganizationalUnit (e.g., `IT Security Department`)
 
-4. Select Place all certificates in the following store radio and click on Browse button
+**Output files** (in `rootCert/`):
+- `ca.crt` - CA certificate (distribute to clients)
+- `ca.key` - CA private key (**keep secret!**)
+- `ca.pem` - CA certificate in PEM format
 
-![place_all](/resources/2023-09-10_114114.png)
+> Keep `rootCert/` in place to sign device certificates.
 
-5. Select Trusted Root Certification Authorities, then OK and Next
+---
 
-![trusted_root_certification_autorities](/resources/2023-09-10_114123.png)
+## Device Certificate Generation
 
-6. Check the summary and Finish
+Generate certificates signed by your Root CA:
 
-![summary](/resources/2023-09-10_114137.png)
+**Prompts:**
+- Certificate Type: Server, Client, or Both
+- Organization
+- OrganizationalUnit
+- CommonName (device FQDN, e.g., `server01.corp.maks-it.com`)
+- Additional SANs (optional IP addresses or DNS names)
 
-## Install root certificate in Linux (Fedora)
+**Output files** (in `certs/<CommonName>/`):
+- `<CommonName>.crt` - Signed certificate
+- `<CommonName>.key` - Private key
+- `ca.crt` - CA certificate (for verification)
+
+---
+
+## PSK Generation
+
+Generate Pre-Shared Keys for TLS-PSK authentication (e.g., Zabbix):
+
+**Prompts:**
+- PSK Identity (e.g., `server01.corp.maks-it.com`)
+- PSK length in bytes (default: 32 = 256-bit)
+
+**Output files** (in `pskCerts/<Identity>/`):
+- `<Identity>.psk` - Hex-encoded PSK (**keep secret!**)
+- `identity.txt` - Identity string
+
+---
+
+## Install Root CA
+
+### Windows (Automated)
+
+Run as Administrator:
+```powershell
+.\Install-RootCA.bat
+```
+
+Or manually:
+1. Double-click `ca.crt`
+2. Click "Install Certificate..."
+3. Select "Local Machine"
+4. Choose "Place all certificates in the following store"
+5. Select "Trusted Root Certification Authorities"
+6. Finish
+
+### Linux (Fedora/RHEL)
 
 ```bash
-sudo trust anchor --store ca.pem
-sudo trust anchor --remove
+sudo cp rootCert/ca.pem /etc/pki/ca-trust/source/anchors/
 sudo update-ca-trust
 ```
 
-## Generate cert for your device FQDN
-
-From the same terminal window execute:
+### Linux (Debian/Ubuntu)
 
 ```bash
-./create_self_signed_cert.sh
+sudo cp rootCert/ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
 ```
 
-script will ask you to provide:
+---
 
-* Organization (example Maks-IT)
-* OrganizationalUnit (example Maks-IT)
-* CommonName (example hcrsrv0001.corp.maks-it.com)'
+## File Extensions Reference
 
-> Note! This time `CommonName` should contain device's complete FQDN
-> In this example script will generate cert for 2 DNS records:
-> * hcrsrv0001.corp.maks-it.com
-> * hcrsrv0001
+| Extension | Description |
+|-----------|-------------|
+| `.key` | Private key (keep secret!) |
+| `.crt` / `.cert` | Signed certificate |
+| `.pem` | PEM-encoded certificate or key |
+| `.csr` | Certificate Signing Request |
+| `.psk` | Pre-Shared Key (hex-encoded) |
+| `.p12` | PKCS#12 bundle (certificate + private key) |
 
-## Cert files extensions explained
+---
 
-Keys come in two halves, a public key and a private key.
-The public key can be distributed publicly and widely, and you can use it to verify,
-but not replicate, information generated using the private key. 
-The private key must be kept secret.
+## Directory Structure
 
-* .key - are generally the private key, used by the server to encrypt and package data for verification by clients.
-* .pem - are generally the public key, used by the client to verify and decrypt data sent by servers. PEM files could also be encoded private keys, so check the content if you're not sure.
-* .p12 - have both halves of the key embedded, so that administrators can easily manage halves of keys.
-* .cert or .crt - are the signed certificates -- basically the "magic" that allows certain sites to be marked as trustworthy by a third party.
-* .csr - is a certificate signing request, a challenge used by a trusted third party to verify the ownership of a keypair without having direct access to the private key (this is what allows end users, who have no direct knowledge of your website, confident that the certificate is valid). In the self-signed scenario you will use the certificate signing request with your own private key to verify your private key (thus self-signed). Depending on your specific application, this might not be needed. (needed for web servers or RPC servers, but not much else).
+```
+src/
+├── bash/                    # Linux scripts
+│   ├── create_self_signed_root_cert.sh
+│   ├── create_self_signed_cert.sh
+│   ├── create_psk.sh
+│   ├── rootCert/           # Generated Root CA
+│   ├── certs/              # Generated certificates
+│   └── pskCerts/           # Generated PSKs
+│
+└── Powershell/             # Windows scripts
+    ├── New-SelfSignedRootCert.ps1
+    ├── New-SelfSignedCert.ps1
+    ├── New-PskCert.ps1
+    ├── Install-RootCA.ps1
+    ├── rootCert/           # Generated Root CA
+    ├── certs/              # Generated certificates
+    └── pskCerts/           # Generated PSKs
+```
+
+---
+
+## License
+
+See [LICENSE](LICENSE) for details.
