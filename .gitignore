@@ -2,3 +2,6 @@
 **/certs
 **/rootCert
 **/utils
+
+.vs
+.vscode

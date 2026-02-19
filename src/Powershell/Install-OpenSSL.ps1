@@ -13,7 +13,8 @@ if (-not (Test-Path $utilsPath)) {
 
 # Check if OpenSSL is already installed
 $archFolder = Get-SystemArchitectureFolder
-$localOpenSSL = Join-Path $utilsPath (Join-Path $archFolder "bin/openssl.exe")
+$openSSLExtractPath = Join-Path $utilsPath "openssl"
+$localOpenSSL = Join-Path $openSSLExtractPath (Join-Path $archFolder "bin/openssl.exe")
 if (Test-Path $localOpenSSL) {
     Write-Host "OpenSSL is already installed at: $localOpenSSL" -ForegroundColor Green
     & $localOpenSSL version
@@ -35,19 +36,20 @@ try {
     Write-Host "Extracting OpenSSL..." -ForegroundColor Cyan
 
     # Extract to utils folder
-    Expand-Archive -Path $zipPath -DestinationPath $utilsPath -Force
+    
+    Expand-Archive -Path $zipPath -DestinationPath $openSSLExtractPath -Force
 
     # FireDaemon package extracts to openssl-3.x.x folder, rename to openssl
-    $extractedFolder = Get-ChildItem -Path $utilsPath -Directory | Where-Object { $_.Name -like "openssl-*" } | Select-Object -First 1
+    $extractedFolder = Get-ChildItem -Path $openSSLExtractPath -Directory | Where-Object { $_.Name -like "openssl-*" } | Select-Object -First 1
     if ($extractedFolder) {
         # Get architecture folder from module
         $archFolder = Get-SystemArchitectureFolder
         $sourceBinPath = Join-Path $extractedFolder.FullName "$archFolder\bin"
-        $targetBinPath = Join-Path $utilsPath (Join-Path $archFolder "bin")
+        $targetBinPath = Join-Path $openSSLExtractPath (Join-Path $archFolder "bin")
         
         if (Test-Path $sourceBinPath) {
             # Create target architecture folder if needed
-            $targetArchFolder = Join-Path $utilsPath $archFolder
+            $targetArchFolder = Join-Path $openSSLExtractPath $archFolder
             if (-not (Test-Path $targetArchFolder)) {
                 New-Item -ItemType Directory -Path $targetArchFolder | Out-Null
             }
@@ -70,7 +72,7 @@ try {
     Remove-Item -Path $zipPath -Force
 
     # Add bin folder to PATH for this session
-    $binFolder = Join-Path $utilsPath (Join-Path $archFolder "bin")
+    $binFolder = Join-Path $openSSLExtractPath (Join-Path $archFolder "bin")
     $env:PATH = "$binFolder;$env:PATH"
     # Update $localOpenSSL to point to the new bin location
     $localOpenSSL = Join-Path $binFolder "openssl.exe"

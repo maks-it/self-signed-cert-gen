@@ -31,7 +31,7 @@ function Get-OpenSSLPath {
     )
 
     $archFolder = Get-SystemArchitectureFolder
-    $localOpenSSL = Join-Path $BasePath (Join-Path "utils" (Join-Path $archFolder "bin/openssl.exe"))
+    $localOpenSSL = Join-Path $BasePath (Join-Path "utils/openssl" (Join-Path $archFolder "bin/openssl.exe"))
     
     if (Test-Path $localOpenSSL) {
         return $localOpenSSL
