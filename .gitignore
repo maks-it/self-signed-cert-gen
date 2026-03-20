@@ -1,6 +1,7 @@
 **/pskCerts
 **/certs
 **/rootCert
+**/sshKeys
 **/utils
 
 .vs
